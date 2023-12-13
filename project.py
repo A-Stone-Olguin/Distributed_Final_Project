@@ -85,6 +85,11 @@ def get_data_from_xml(filename):
     df = pd.DataFrame.from_dict(processes_data).T
     return df
 
+# Runs z3 on the xml trace, and it returns whether it is satisified or not
+def run_z3(df):
+
+    return
+
 ## Main function
 def main():
     df = get_data_from_xml("trace.xml")
