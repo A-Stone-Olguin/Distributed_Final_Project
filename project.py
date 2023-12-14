@@ -114,6 +114,8 @@ def sender_value(d, process, receive_time):
 # Runs z3 on the xml trace, and it returns whether it is satisified or not
 def run_z3(d):
 
+    # Names of each entries' interval for debugging if failed:
+    invalid_info = []
     s = Solver();
     s.set("timeout", 1000000)
     # Add each past and current value to its index
@@ -121,11 +123,14 @@ def run_z3(d):
         proc_i_intervals = d[process]["interval"]
         for end_time in proc_i_intervals.keys():
             (start_time, current_val, old_val, misc_to_comm) = proc_i_intervals[end_time]
-            previous = BoolVal(old_val)
+            previous = old_val
+
+            # Used to determine if we need to check both previous and current values match
+            previous_and_current = False
             
             # Ensure that each process starts with x = True
             if start_time == "0":
-                curr_of_previous = BoolVal(True)
+                curr_of_previous = True
             else:
                 # p_int is the previous interval (the start time of this is the end time of the last)
                 p_int = d[process]["interval"][start_time]
@@ -134,24 +139,51 @@ def run_z3(d):
                     # If the previous sent a message, no change
                     if not received:
                         # Sending a message changes old to new
-                        curr_of_previous = BoolVal(p_int[2])
+                        curr_of_previous = p_int[2]
                     # If the previous received a message, want to make sure the current_value is the same as the one received
                     elif received: 
-                        previous = BoolVal(current_val)
+                        current = current_val
                         # Previous entry's received value is the same current value
-                        curr_of_previous = BoolVal(p_int[1])
+                        curr_of_previous = p_int[1]
+                        prev_of_previous = p_int[2]
+                        previous_and_current = True
                     else:
                         exit("Error on saying communication, but could't find if it received the message!")
                 # Otherwise, just check the previous interval's value
                 else:
-                    curr_of_previous = BoolVal(p_int[1])
-            s.add(previous == curr_of_previous)
+                    curr_of_previous = p_int[1]
+            # interval_names.append(interval_name)
+            if previous_and_current:
+                bv = BoolVal(current == curr_of_previous)
+                s.add(bv)
+                if (is_false(bv)):
+                    # First True is to say tested previous and current, second true to to say current and current compared
+                    invalid_info.append((process, start_time, end_time, current, curr_of_previous, True, True))
+                bv = BoolVal(previous == prev_of_previous)
+                s.add(bv)
+                if (is_false(bv)):
+                    invalid_info.append((process, start_time, end_time, previous, prev_of_previous, True, False))
+            else:
+                bv = BoolVal(previous == curr_of_previous)
+                s.add(bv)
+                if (is_false(bv)):
+                    invalid_info.append((process, start_time, end_time, previous, curr_of_previous, False, False))
 
 
     if(s.check() == sat):
-        print(f"Constraints Satisified!"), 
+        print(f"Constraints Satisified! The predicate maintained its value correctly!"), 
     else:
-        print("Constraints Not Satisified!")
+        print("Constraints Not Satisified! Here is where it went wrong: ")
+        for val in invalid_info:
+
+            if val[5]:
+                if val[6]:
+                    ## Had current and current compares
+                    print(f"\tProcess {val[0]} (start, end) ({val[1]}, {val[2]}): Current Value is {val[3]} when it should be {val[4]}")
+                else:
+                    print(f"\tProcess {val[0]} (start, end) ({val[1]}, {val[2]}): Old Value is {val[3]} when it should be {val[4]}")
+            else:
+                print(f"\tProcess {val[0]} (start, end) ({val[1]}, {val[2]}): Old Value is {val[3]} when it should be {val[4]}")
         sys.stdout.flush()
 
 

@@ -2,3 +2,4 @@ beautifulsoup4
 pandas
 tqdm
 z3-solver
+lxml
