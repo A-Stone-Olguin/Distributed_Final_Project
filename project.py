@@ -86,7 +86,26 @@ def get_data_from_xml(filename):
     return df
 
 # Runs z3 on the xml trace, and it returns whether it is satisified or not
-def run_z3(df):
+def run_z3(d):
+
+    # Add each past and current value to its index
+    z3_bools = {}
+    for process in d.keys():
+        z3_bools[process] = {}
+        proc_i_intervals = d[process]["interval"]
+        for start_time in proc_i_intervals.keys():
+            # z3_bools[process][start_time] = []
+            (end_time, current_val, old_val, misc_to_comm) = proc_i_intervals[start_time]
+            # name = f"{process}_{start_time}_to_{end_time}"
+            # past = f"{name}_past"
+            # current = f"{name}_current"
+            z3_bools[process][start_time] = BoolVal(old_val)
+            z3_bools[process][start_time] = BoolVal(current_val)
+        print(z3_bools[process])
+
+
+
+
 
     return
 
@@ -94,8 +113,12 @@ def run_z3(df):
 def main():
     df = get_data_from_xml("trace.xml")
     print(df)
+    d = pd.DataFrame.to_dict(df.T)
+
+    run_z3(d)
+    return
 
 
-if __name__ == "main":
+
+if __name__ == "__main__":
     main()
-main()
