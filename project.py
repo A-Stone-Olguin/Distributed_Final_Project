@@ -85,6 +85,30 @@ def get_data_from_xml(filename):
     df = pd.DataFrame.from_dict(processes_data).T
     return df
 
+# Determines whether the split to communication at receive time was a send or a receive
+# Returns a boolean
+def received_message(d, process, receive_time):
+    # Check if a message was received at the given time
+    if receive_time in d[process]["receive_info"]:
+        return True 
+    # That must mean it was sent, double check here: (checks for existence at send time)
+    elif receive_time in d[process]["sent_info"]:
+        return False
+    else:
+        exit(f"Misc to communication when no communication occurred! Process, time: ({process}, {receive_time})") 
+    
+# If we know that a process received a message, check the value of its sender
+def sender_value(d, process, receive_time):
+    # Get the sender_name and time it sent
+    (sender, send_time) = d[process]["receive_info"][receive_time]
+    # Ensure that the sender sent a message to the process
+    if d[sender]["sent_info"][send_time] == process:
+        # Return the value of the sender at the time it sent
+        # print(d[sender]["interval"][send_time])
+        return d[sender]["interval"][send_time][1]
+    else:
+        exit("Value was not actually sent to process!")
+
 # Runs z3 on the xml trace, and it returns whether it is satisified or not
 def run_z3(d):
 
@@ -98,21 +122,33 @@ def run_z3(d):
         for end_time in proc_i_intervals.keys():
             (start_time, current_val, old_val, misc_to_comm) = proc_i_intervals[end_time]
             ## If no communication, that means it is an event that changed the value
-            if start_time != "0":
-                if not misc_to_comm and not d[process]["interval"][start_time][3]:
-                    previous = BoolVal(old_val)
-                    if start_time == "0":
-                        # Ensure that each process starts with x = True
-                        curr_of_previous = BoolVal(True)
+            if not misc_to_comm:
+                previous = BoolVal(old_val)
+                
+                # Ensure that each process starts with x = True
+                if start_time == "0":
+                    curr_of_previous = BoolVal(True)
+                else:
+                    # p_int is the previous interval (the start time of this is the end time of the last)
+                    p_int = d[process]["interval"][start_time]
+                    if p_int[3]:
+                        received = received_message(d, process, start_time)
+                        # If the previous sent a message, no change
+                        if not received:
+                            # Sending a message changes old to new
+                            curr_of_previous = BoolVal(p_int[2])
+                        # If the previous received a message, want to make sure the current_value is the same as the one received
+                        elif received: 
+                            previous = BoolVal(current_val)
+                            # Previous entry's received value is the same current value
+                            curr_of_previous = BoolVal(p_int[1])
+                        else:
+                            exit("Error on saying communication, but could't find if it received the message!")
+                    # Otherwise, just check the previous interval's value
                     else:
-                        # The start time of this one is the end_time of the previous
-                        curr_of_previous = BoolVal(d[process]["interval"][start_time][1])
-                    # print(previous == curr_of_previous)
-                    s.add(previous == curr_of_previous)
-
-            # z3_bools[process][end_time] = BoolVal(old_val)
-            # z3_bools[process][end_time] = BoolVal(current_val)
-        # print(z3_bools[process])
+                        curr_of_previous = BoolVal(p_int[1])
+                # print(previous == curr_of_previous)
+                s.add(previous == curr_of_previous)
 
     if(s.check() == sat):
         print(f"Constraints Satisified!"), 
