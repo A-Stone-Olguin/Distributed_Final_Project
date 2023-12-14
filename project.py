@@ -59,7 +59,7 @@ def get_data_from_xml(filename):
             misc_to_comm = False
 
         # Add the interval information for the tag
-        processes_data[tag["process"]]["interval"][start] = (end, current_val, old_val, misc_to_comm)
+        processes_data[tag["process"]]["interval"][end] = (start, current_val, old_val, misc_to_comm)
 
     print("\n")
     # Find all information about messages (send/receive)
@@ -88,22 +88,37 @@ def get_data_from_xml(filename):
 # Runs z3 on the xml trace, and it returns whether it is satisified or not
 def run_z3(d):
 
+    s = Solver();
+    s.set("timeout", 1000000)
     # Add each past and current value to its index
     z3_bools = {}
     for process in d.keys():
-        z3_bools[process] = {}
+        # z3_bools[process] = {}
         proc_i_intervals = d[process]["interval"]
-        for start_time in proc_i_intervals.keys():
-            # z3_bools[process][start_time] = []
-            (end_time, current_val, old_val, misc_to_comm) = proc_i_intervals[start_time]
-            # name = f"{process}_{start_time}_to_{end_time}"
-            # past = f"{name}_past"
-            # current = f"{name}_current"
-            z3_bools[process][start_time] = BoolVal(old_val)
-            z3_bools[process][start_time] = BoolVal(current_val)
-        print(z3_bools[process])
+        for end_time in proc_i_intervals.keys():
+            (start_time, current_val, old_val, misc_to_comm) = proc_i_intervals[end_time]
+            ## If no communication, that means it is an event that changed the value
+            if start_time != "0":
+                if not misc_to_comm and not d[process]["interval"][start_time][3]:
+                    previous = BoolVal(old_val)
+                    if start_time == "0":
+                        # Ensure that each process starts with x = True
+                        curr_of_previous = BoolVal(True)
+                    else:
+                        # The start time of this one is the end_time of the previous
+                        curr_of_previous = BoolVal(d[process]["interval"][start_time][1])
+                    # print(previous == curr_of_previous)
+                    s.add(previous == curr_of_previous)
 
+            # z3_bools[process][end_time] = BoolVal(old_val)
+            # z3_bools[process][end_time] = BoolVal(current_val)
+        # print(z3_bools[process])
 
+    if(s.check() == sat):
+        print(f"Constraints Satisified!"), 
+    else:
+        print("Constraints Not Satisified!")
+        sys.stdout.flush()
 
 
 
