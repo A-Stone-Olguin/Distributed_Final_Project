@@ -91,11 +91,13 @@ def received_message(d, process, receive_time):
     # Check if a message was received at the given time
     if receive_time in d[process]["receive_info"]:
         return True 
-    # That must mean it was sent, double check here: (checks for existence at send time)
-    elif receive_time in d[process]["sent_info"]:
-        return False
     else:
-        exit(f"Misc to communication when no communication occurred! Process, time: ({process}, {receive_time})") 
+        return False
+    # That must mean it was sent, double check here: (checks for existence at send time)
+    # elif receive_time in d[process]["sent_info"]:
+    #     return False
+    # else:
+    #     exit(f"Misc to communication when no communication occurred! Process, time: ({process}, {receive_time})") 
     
 # If we know that a process received a message, check the value of its sender
 def sender_value(d, process, receive_time):
@@ -115,40 +117,36 @@ def run_z3(d):
     s = Solver();
     s.set("timeout", 1000000)
     # Add each past and current value to its index
-    z3_bools = {}
     for process in d.keys():
-        # z3_bools[process] = {}
         proc_i_intervals = d[process]["interval"]
         for end_time in proc_i_intervals.keys():
             (start_time, current_val, old_val, misc_to_comm) = proc_i_intervals[end_time]
-            ## If no communication, that means it is an event that changed the value
-            if not misc_to_comm:
-                previous = BoolVal(old_val)
-                
-                # Ensure that each process starts with x = True
-                if start_time == "0":
-                    curr_of_previous = BoolVal(True)
-                else:
-                    # p_int is the previous interval (the start time of this is the end time of the last)
-                    p_int = d[process]["interval"][start_time]
-                    if p_int[3]:
-                        received = received_message(d, process, start_time)
-                        # If the previous sent a message, no change
-                        if not received:
-                            # Sending a message changes old to new
-                            curr_of_previous = BoolVal(p_int[2])
-                        # If the previous received a message, want to make sure the current_value is the same as the one received
-                        elif received: 
-                            previous = BoolVal(current_val)
-                            # Previous entry's received value is the same current value
-                            curr_of_previous = BoolVal(p_int[1])
-                        else:
-                            exit("Error on saying communication, but could't find if it received the message!")
-                    # Otherwise, just check the previous interval's value
-                    else:
+            previous = BoolVal(old_val)
+            
+            # Ensure that each process starts with x = True
+            if start_time == "0":
+                curr_of_previous = BoolVal(True)
+            else:
+                # p_int is the previous interval (the start time of this is the end time of the last)
+                p_int = d[process]["interval"][start_time]
+                if p_int[3]:
+                    received = received_message(d, process, start_time)
+                    # If the previous sent a message, no change
+                    if not received:
+                        # Sending a message changes old to new
+                        curr_of_previous = BoolVal(p_int[2])
+                    # If the previous received a message, want to make sure the current_value is the same as the one received
+                    elif received: 
+                        previous = BoolVal(current_val)
+                        # Previous entry's received value is the same current value
                         curr_of_previous = BoolVal(p_int[1])
-                # print(previous == curr_of_previous)
-                s.add(previous == curr_of_previous)
+                    else:
+                        exit("Error on saying communication, but could't find if it received the message!")
+                # Otherwise, just check the previous interval's value
+                else:
+                    curr_of_previous = BoolVal(p_int[1])
+            s.add(previous == curr_of_previous)
+
 
     if(s.check() == sat):
         print(f"Constraints Satisified!"), 
@@ -163,7 +161,6 @@ def run_z3(d):
 ## Main function
 def main():
     df = get_data_from_xml("trace.xml")
-    print(df)
     d = pd.DataFrame.to_dict(df.T)
 
     run_z3(d)
