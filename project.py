@@ -25,9 +25,9 @@ def get_data_from_xml(filename):
     processes_data = {}
     for i in range(10):
         processes_data[str(i)] = {}
-        processes_data[str(i)]["interval"] = []
-        processes_data[str(i)]["sent_info"] = []
-        processes_data[str(i)]["receive_info"] = []
+        processes_data[str(i)]["interval"] = {}
+        processes_data[str(i)]["sent_info"] = {}
+        processes_data[str(i)]["receive_info"] = {}
 
     ## Open the file to be parsed
     with open(filename) as f:
@@ -59,7 +59,7 @@ def get_data_from_xml(filename):
             misc_to_comm = False
 
         # Add the interval information for the tag
-        processes_data[tag["process"]]["interval"].append((start, end, current_val, old_val, misc_to_comm))
+        processes_data[tag["process"]]["interval"][start] = (end, current_val, old_val, misc_to_comm)
 
     print("\n")
     # Find all information about messages (send/receive)
@@ -70,12 +70,12 @@ def get_data_from_xml(filename):
             case "send":
                 timestamp_send = tag.find("sender_time").contents[0] 
                 sent_to = tag.find("to").contents[0]
-                processes_data[tag["process"]]["sent_info"].append((sent_to, timestamp_send))
+                processes_data[tag["process"]]["sent_info"][timestamp_send] = sent_to
             case "receive":
                 timestamp_send = tag.find("sender_time").contents[0] 
                 timestamp_receive = tag.find("receiver_time").contents[0]
                 from_msg = tag.find("from").contents[0]
-                processes_data[tag["process"]]["receive_info"].append((from_msg, timestamp_send, timestamp_receive))
+                processes_data[tag["process"]]["receive_info"][timestamp_receive] = (from_msg, timestamp_send)
             case _:
                 print("ERROR!!")
 
