@@ -2,6 +2,7 @@ import pandas as pd
 from z3 import *
 from tqdm import trange
 from bs4 import BeautifulSoup
+import re
 
 # Converts a boolean string to the boolean type
 def true_false_string_to_bool(tf_str):
@@ -81,9 +82,8 @@ def get_data_from_xml(filename):
 
     print("\n")
 
-    # After adding all the data into the dictionary, return as a pandas dataframe
-    df = pd.DataFrame.from_dict(processes_data).T
-    return df
+    # After adding all the data into the dictionary, return it
+    return processes_data
 
 # Determines whether the split to communication at receive time was a send or a receive
 # Returns a boolean
@@ -91,25 +91,12 @@ def received_message(d, process, receive_time):
     # Check if a message was received at the given time
     if receive_time in d[process]["receive_info"]:
         return True 
-    else:
-        return False
     # That must mean it was sent, double check here: (checks for existence at send time)
-    # elif receive_time in d[process]["sent_info"]:
-    #     return False
-    # else:
-    #     exit(f"Misc to communication when no communication occurred! Process, time: ({process}, {receive_time})") 
-    
-# If we know that a process received a message, check the value of its sender
-def sender_value(d, process, receive_time):
-    # Get the sender_name and time it sent
-    (sender, send_time) = d[process]["receive_info"][receive_time]
-    # Ensure that the sender sent a message to the process
-    if d[sender]["sent_info"][send_time] == process:
-        # Return the value of the sender at the time it sent
-        # print(d[sender]["interval"][send_time])
-        return d[sender]["interval"][send_time][1]
+    elif receive_time in d[process]["sent_info"]:
+        return False
     else:
-        exit("Value was not actually sent to process!")
+        exit(f"Misc to communication when no communication occurred! Process, time: ({process}, {receive_time})") 
+    
 
 # Runs z3 on the xml trace, and it returns whether it is satisified or not
 def run_z3(d):
@@ -122,7 +109,7 @@ def run_z3(d):
     for process in d.keys():
         proc_i_intervals = d[process]["interval"]
         for end_time in proc_i_intervals.keys():
-            (start_time, current_val, old_val, misc_to_comm) = proc_i_intervals[end_time]
+            (start_time, current_val, old_val, _) = proc_i_intervals[end_time]
             previous = old_val
 
             # Used to determine if we need to check both previous and current values match
@@ -134,25 +121,32 @@ def run_z3(d):
             else:
                 # p_int is the previous interval (the start time of this is the end time of the last)
                 p_int = d[process]["interval"][start_time]
+
+                # If the previous interval involved communication:
                 if p_int[3]:
                     received = received_message(d, process, start_time)
-                    # If the previous sent a message, no change
+
+                    # If the previous sent a message, grab its old value
                     if not received:
                         # Sending a message changes old to new
                         curr_of_previous = p_int[2]
+
                     # If the previous received a message, want to make sure the current_value is the same as the one received
                     elif received: 
-                        current = current_val
                         # Previous entry's received value is the same current value
+                        current = current_val
                         curr_of_previous = p_int[1]
                         prev_of_previous = p_int[2]
                         previous_and_current = True
+
+                    # Error
                     else:
                         exit("Error on saying communication, but could't find if it received the message!")
                 # Otherwise, just check the previous interval's value
                 else:
                     curr_of_previous = p_int[1]
-            # interval_names.append(interval_name)
+                    
+            # If we have to add previous and current checks
             if previous_and_current:
                 bv = BoolVal(current == curr_of_previous)
                 s.add(bv)
@@ -186,14 +180,127 @@ def run_z3(d):
                 print(f"\tProcess {val[0]} (start, end) ({val[1]}, {val[2]}): Old Value is {val[3]} when it should be {val[4]}")
         sys.stdout.flush()
 
-
+        rerun_z3(d, invalid_info)
 
     return
 
+def rerun_z3(d, prev_run_info):
+    print("\nRerunning the solver!\n\n")
+    # Set up z3 solver
+    s = Solver();
+    s.set("timeout", 1000000)
+
+    # Add each past and current value to its index
+    for process in d.keys():
+        proc_i_intervals = d[process]["interval"]
+        for end_time in proc_i_intervals.keys():
+            invalid_curr = False
+            invalid_prev = False
+            (start_time, current_val, old_val, _) = proc_i_intervals[end_time]
+            if len(prev_run_info) > 0:
+                (p, s_t, e_t, _, _ , _, _) = prev_run_info[0]
+                if p == process and s_t == start_time and e_t == end_time:
+                    invalid_curr = True
+                    current = Bool(f"Current_{p}_{s_t}_{e_t}")
+                    previous = Bool(f"Old_{p}_{s_t}_{e_t}")
+                    prev_run_info.pop(0)
+                else:
+                    previous = old_val
+            else:
+                previous = old_val
+
+            # Used to determine if we need to check both previous and current values match
+            previous_and_current = False
+            
+            # Ensure that each process starts with x = True
+            if start_time == "0":
+                curr_of_previous = True
+            else:
+                # p_int is the previous interval (the start time of this is the end time of the last)
+                p_int = d[process]["interval"][start_time]
+
+                # Check whether we need to update previous booleans too
+                if invalid_curr :
+                    invalid_prev = True
+                    prev_start = d[process]["interval"][s_t][0]
+                    curr_of_previous = Bool(f"Current_{p}_{prev_start}_{s_t}")
+                    prev_of_previous = Bool(f"Old_{p}_{prev_start}_{s_t}")
+
+
+
+                # If the previous interval involved communication:
+                if p_int[3]:
+                    received = received_message(d, process, start_time)
+
+                    # If the previous sent a message, grab its old value
+                    if not received:
+                        # Sending a message changes old to new
+                        if not invalid_prev:
+                            curr_of_previous = p_int[2]
+
+                    # If the previous received a message, want to make sure the current_value is the same as the one received
+                    elif received: 
+                        previous_and_current = True
+                        if not invalid_curr:
+                            # Previous entry's received value is the same current value
+                            current = current_val
+                            curr_of_previous = p_int[1]
+                            prev_of_previous = p_int[2]
+
+                    # Error
+                    else:
+                        exit("Error on saying communication, but could't find if it received the message!")
+                # Otherwise, just check the previous interval's value
+                else:
+                    curr_of_previous = p_int[1]
+                    
+            if previous_and_current and not invalid_prev and not invalid_curr:
+                bv = BoolVal(current == curr_of_previous)
+                s.add(bv)
+                bv = BoolVal(previous == prev_of_previous)
+                s.add(bv)
+            elif previous_and_current and not invalid_prev and invalid_curr:
+                s.add(current == BoolVal(curr_of_previous))
+                s.add(previous == BoolVal(prev_of_previous))
+            elif previous_and_current and invalid_prev and invalid_curr:
+                s.add(current == curr_of_previous)
+                s.add(previous == prev_of_previous)
+            elif not invalid_prev and invalid_curr:
+                s.add(previous == BoolVal(curr_of_previous))
+            elif invalid_prev and invalid_curr:
+                s.add(previous == curr_of_previous)
+            else:
+                bv = BoolVal(previous == curr_of_previous)
+                s.add(bv)
+
+
+    if(s.check() == sat):
+        print(f"Constraints Satisified! The predicate maintained its value correctly!")
+        print("Here are the fixes suggested for the errors: \n")
+        m = s.model()
+        pattern = r'\d+'
+        for d in m.decls():
+            nums = re.findall(pattern, d.name())
+            if re.search(r'Old', d.name()):
+                val = "Old"
+            else: 
+                val = "New"
+            if len(nums) != 3:
+                print("ERROR: Not three numbers in name!")
+            else:                     ## We have the name of the old value too
+                process = nums[0]
+                start_time = nums[1]
+                end_time = nums[2]
+                solution = m[d]
+                print(f"\tProcess {process}: (start, end): ({start_time}, {end_time}):")
+                print(f"\t\tChange {val} value to {solution}")
+    else:
+        print("Constraints Not Satisified!\n ERROR: It should not go wrong again!")
+        sys.stdout.flush()
+
 ## Main function
 def main():
-    df = get_data_from_xml("trace.xml")
-    d = pd.DataFrame.to_dict(df.T)
+    d = get_data_from_xml("trace.xml")
 
     run_z3(d)
     return
