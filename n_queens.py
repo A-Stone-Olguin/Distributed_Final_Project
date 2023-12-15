@@ -8,7 +8,8 @@ def print_matrix(matrix):
     """
     Prints a matrix row by row.
 
-    :param matrix: An m-sized array of n-sized arrays.
+    Parameters:
+    - matrix (List of Lists of Floats): An m-sized array of n-sized arrays.
     """
     for row in matrix:
         formatted_row = ["{0: >3}".format(i) for i in row]
@@ -19,6 +20,15 @@ def print_matrix(matrix):
         print(row_string)
 
 def n_queens(n):
+    """
+    Solves the N_Queens problem on an input N. Prints out the solution (if it can find one).
+
+    Parameters:
+    - n (Int): Positive integer that is greater than or equal to 3. Is the N for N Queens 
+
+    Returns:
+    - None
+    """
     cells = []
     ## Represent as bools
     for i in range(0,n):
@@ -50,24 +60,20 @@ def n_queens(n):
         args = [cells[i + j*(n+1)] for j in range(0,n-i)]
         new_args = [And(x[0], x[1]) for x in itertools.combinations(args, 2)]
         s.add(Not (Or(*new_args)))
-        # print([i + j*(n+1) for j in range(0,n-i)])
     for j in range(1, n):
         args = [cells[n*j + i*(n+1)] for i in range(0,n-j)]
         new_args = [And(x[0], x[1]) for x in itertools.combinations(args, 2)]
         s.add(Not (Or(*new_args)))
-        # print([n*j + i*(n+1) for i in range(0,n-j)])
 
     # Ensure not two in same diagonal right to left
     for i in range(0,n):
         args = [cells[(n-1)*(j+1) - i] for j in range(0, n-i)]
         new_args = [And(x[0], x[1]) for x in itertools.combinations(args, 2)]
         s.add(Not (Or(*new_args)))
-        # print([ (n-1)*(j+1) - i  for j in range(0, n-i)])
     for j in range(1, n):
         args = [cells[(n-1)*(i+1) + n*j]  for i in range(0, n-j)]
         new_args = [And(x[0], x[1]) for x in itertools.combinations(args, 2)]
         s.add(Not (Or(*new_args)))
-        # print([(n-1)*(i+1) + n*j for i in range(0,n-j)])
 
 
     #Check if it found a solution:
