@@ -3,3 +3,4 @@ pandas
 tqdm
 z3-solver
 lxml
+tabulate
