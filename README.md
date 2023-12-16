@@ -1,8 +1,20 @@
 # Distributed Algorithms (COSC-5010, EE-5885) Final Project
 
-Repository for the University of Wyoming Distributed Algorithms Course.
+Repository for the University of Wyoming Distributed Algorithms Course's Final Project.
 
 # Table of Contents
+- [Distributed Algorithms (COSC-5010, EE-5885) Final Project](#distributed-algorithms-cosc-5010-ee-5885-final-project)
+- [Table of Contents](#table-of-contents)
+- [Requirements:](#requirements)
+- [Project Files](#project-files)
+- [N\_Queens.py](#n_queenspy)
+  - [About](#about)
+  - [How to Run](#how-to-run)
+- [Project.py](#projectpy)
+  - [About](#about-1)
+  - [How to Run](#how-to-run-1)
+  - [Output](#output)
+  - [Notes](#notes)
 
 
 # Requirements:
@@ -55,6 +67,11 @@ It will then print out the locations on a n by n board of where the queens shoul
 # Project.py
 
 This section involves the necessary informatio about `project.py`.
+
+## About 
+
+This project aims to detect if any errors have occurred in a trace of distributed program. 
+The SMT solver Z3 is applied to verify that errors have not occurred.
 
 ## How to Run
 
