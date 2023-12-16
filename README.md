@@ -34,7 +34,7 @@ This section involves the necessary information about `n_queens.py`.
 ## About
 
 This file aims to solve the [N Queens Problem](https://en.wikipedia.org/wiki/Eight_queens_puzzle) using Z3.
-It will prompt the user for a value of N (integer greater than or equal to 3) and print out a solution.
+It will prompt the user for a value of N (integer greater than or equal to 4) and print out a solution.
 
 ## How to Run
 
@@ -48,7 +48,7 @@ After that, simply run
 python3 n_queens.py
 ```
 
-The script will prompt for an integer greater than or equal to 3 to solve the N Queens problem.
+The script will prompt for an integer greater than or equal to 4 to solve the N Queens problem.
 
 It will then print out the locations on a n by n board of where the queens should be located (marked with a Q).
 

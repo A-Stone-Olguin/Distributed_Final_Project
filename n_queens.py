@@ -101,13 +101,24 @@ def n_queens(n):
 
 
 def main():
-    for n in [4,8]:
-        start = time.time()
-        n_queens(n)
-        end = time.time()
-        print(f"The time for {n}-queens solution took {end-start} seconds")
-    return
+    valid_input = False
+    print("Input an integer >= 4 as N for the N Queens Problem:")
+    while not valid_input:
+        user_in = input("\t").strip()
+        try:
+            n = int(user_in)
+        except ValueError:
+            print("Invalid input. Please input an integer >= 4.")
+            continue
 
+        if n < 3:
+            print("Please input an integer value >= 4.")
+        else:
+            valid_input = True
+            start = time.time()
+            n_queens(n)
+            end = time.time()
+            print(f"The time for {n}-queens solution took {end-start} seconds")
 
 if __name__ == "__main__":
     main()
