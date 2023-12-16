@@ -49,7 +49,7 @@ def get_data_from_xml(filename):
         data = f.read()
 
     # Grab the data from BeautifulSoup
-    print("Grabbing data with beautiful soup (this could take a little while)")
+    print(f"Grabbing data for file {filename} with beautiful soup (this could take a little while)")
     bs_data = BeautifulSoup(data, "xml")
     print("Finished collecting data with beautiful soup!\n")
 
@@ -305,7 +305,7 @@ def run_z3(d, prev_run_info = [], run_again = False):
         print(df)
 
         # Prompt the user to run again
-        print("\nWant to run again? Y for yes, N for no")
+        print("\nWant to run again to find solutions for the errors? Y for yes, N for no")
         while not run_again:
             response = input("\t").strip().lower()
             if response in ('y', 'yes'):
@@ -320,8 +320,35 @@ def run_z3(d, prev_run_info = [], run_again = False):
 
 ## Main function
 def main():
+    # Get the desired filename from the user
+    valid_files = ["trace.xml", "Incorrect_trace.xml"]
+    valid_input = False
+    pattern = r'\d'
+
+    print("Choose which trace file to use (by its number)")
+    while not valid_input:
+        for i, fname in enumerate(valid_files):
+            print(f"\t{i+1}) {fname}")
+        fname = input("\n\t").strip()
+
+        nums = re.findall(pattern, fname)
+        if len(nums) == 0:
+            print("Please input a number for the file name.")
+            continue 
+        elif len(nums) > 1:
+            print("Only one digit numbers are allowed. Please input a number given for the file name")
+            continue
+
+        num = int(nums[0])
+        if num <= 0 or num > len(valid_files):
+            print(f"Please input a valid number index between 1 and {len(valid_files)}")
+            continue 
+        else:
+            filename = valid_files[num-1]
+            valid_input = True
+
     # Get the data from the trace
-    d = get_data_from_xml("trace.xml")
+    d = get_data_from_xml(filename)
 
     # Run z3 on the data
     run_z3(d)
