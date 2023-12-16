@@ -54,4 +54,39 @@ It will then print out the locations on a n by n board of where the queens shoul
 
 # Project.py
 
+This section involves the necessary informatio about `project.py`.
 
+## How to Run
+
+If the necessary packages have not been installed using pip, run:
+```
+pip install -r requirements.txt
+```
+
+After that, run 
+```
+python3 project.py
+```
+
+The script will prompt the user which `.xml` file they would like to test: 
+1. `trace.xml`
+2. `Incorrect_trace.xml`
+
+Choosing the index number, the user can see if it correctly moved the predicte around.
+
+## Output
+
+If the user chose `trace.xml`, the output will say that the predicate value was satisfied in the communication.
+
+If the user chose the `Incorrect_trace.xml` file with errors, they will see what processes on which intervals failed to satisfy.
+The user will be prompted to have Z3 run again to suggest solutions to the errors, which will be run if the user says yes.
+
+Selecting `Yes` will have Z3 output another table suggesting how to fix some intervals based on the previous errors.
+
+Selecting `No` will have the program terminate.
+
+## Notes
+
+The Z3 suggestion solver has some bugs, it can suggest changes to values that are already satisfied (this is because it double-checks values).
+
+Additionally, it might be that fixing some problems introduces new ones.
